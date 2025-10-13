@@ -19,10 +19,12 @@
   <div class="sub">ثابت ومستقر — شعار علوي مُثبّت 10px من الأعلى واليمين</div>
 </header>
 
-<main class="layout">
-  <section class="controls">
-    <details open>
-      <summary>المقاس & الخلفية</summary>
+<main class="container-fluid p-3">
+  <div class="row">
+    <div class="col-lg-4">
+      <section class="controls">
+        <details open>
+          <summary>المقاس & الخلفية</summary>
       <div class="row">
         <label>مقاس اللوحة</label>
         <select id="canvasSize">
@@ -164,19 +166,22 @@
         <button id="btnExport">تصدير PNG</button>
       </div>
       <div class="row"><small>كل شيء محلي في المتصفح.</small></div>
-    </details>
-  </section>
-
-  <section class="stage">
-    <canvas id="canvas" width="1280" height="1280"></canvas>
-  </section>
+        </details>
+      </section>
+    </div>
+    <div class="col-lg-8">
+      <section class="stage">
+        <canvas id="canvas" width="1280" height="1280"></canvas>
+      </section>
+    </div>
+  </div>
 </main>
 
 
 <footer class="footer fixed-bottom border-0">
   <div class="py-2" style="background:linear-gradient(90deg,#063033,#0b4e50)">
-    <div class="container d-flex flex-wrap justify-content-between align-items-center text-light">
-      <div class="d-flex align-items-center gap-3">
+    <div class="container d-flex flex-column justify-content-center align-items-center text-light">
+      <div class="d-flex align-items-center gap-3 mb-2">
         <span class="fw-bold small">تابعنا</span>
         <a class="text-light" href="#"><i class="bi bi-twitter-x fs-5"></i></a>
         <a class="text-light" href="#"><i class="bi bi-instagram fs-5"></i></a>
