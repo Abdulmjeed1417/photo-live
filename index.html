@@ -13,13 +13,19 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
 </head>
-<body>
-<header>
-  <h1>مصمم منشورات معهد الحامدين <small>v5.1</small></h1>
-  <div class="sub">ثابت ومستقر — شعار علوي مُثبّت 10px من الأعلى واليمين</div>
+<body class="d-flex flex-column vh-100">
+<header class="d-flex flex-wrap justify-content-between align-items-center">
+  <div>
+    <h1>مصمم منشورات معهد الحامدين <small>v5.1</small></h1>
+    <div class="sub">ثابت ومستقر — شعار علوي مُثبّت 10px من الأعلى واليمين</div>
+  </div>
+  <div class="d-flex align-items-center gap-3">
+    <a href="#" class="text-light d-flex align-items-center gap-2"><i class="bi bi-info-circle fs-5"></i> عن البرنامج</a>
+    <a href="#" class="text-light d-flex align-items-center gap-2"><i class="bi bi-people fs-5"></i> من نحن</a>
+  </div>
 </header>
 
-<main class="layout">
+<main class="layout flex-grow-1">
   <section class="controls">
     <details open>
       <summary>المقاس & الخلفية</summary>
@@ -50,8 +56,8 @@
         <div class="row tight"><label>تمويه</label><input type="range" id="bgBlur" min="0" max="20" step="0.5" value="0"/></div>
       </div>
       <div class="grid2">
-        <div class="row tight"><label>سطوع الخلفية</label><input type="range" id="bgBright" min="0" max="2" step="0.01" value="1"/></div>
-        <div class="row tight"><label>تباين الخلفية</label><input type="range" id="bgContrast" min="0" max="2" step="0.01" value="1"/></div>
+        <div class="row tight"><label>سطوع الخلفية</label><input type="range" id="bgBright" min="0" max="3" step="0.01" value="1"/></div>
+        <div class="row tight"><label>تباين الخلفية</label><input type="range" id="bgContrast" min="0" max="3" step="0.01" value="1"/></div>
       </div>
       <div class="row tight"><label>ملاءمة</label>
         <select id="bgFit"><option value="cover">Cover</option><option value="contain">Contain</option></select>
@@ -72,23 +78,11 @@
 
       <hr style="border-color:#0b4e50;opacity:.4">
 
-      <div class="row"><strong>الشعار العلوي (مثبّت 10px)</strong></div>
+      <div class="row"><strong>الشعارات العلوية (الجانب الأيسر)</strong></div>
+      <div id="topLogosContainer"></div>
       <div class="row">
-        <label>تحميل</label><input type="file" id="topLogo" accept="image/*">
+          <button id="addTopLogo" class="ghost">إضافة شعار علوي</button>
       </div>
-      <div class="grid2">
-        <div class="row tight"><label>تفعيل</label><input type="checkbox" id="topEnabled" checked></div>
-        <div class="row tight"><label>حجم</label><input type="range" id="topScale" min="0.05" max="0.8" step="0.01" value="0.23"></div>
-      </div>
-      <div class="grid2">
-        <div class="row tight"><label>دوران</label><input type="range" id="topRotation" min="-180" max="180" step="1" value="0"></div>
-        <div class="row tight"><label>شفافية</label><input type="range" id="topOpacity" min="0" max="1" step="0.01" value="1"></div>
-      </div>
-      <div class="grid2">
-        <div class="row tight"><label>Flip H</label><input type="checkbox" id="topFlipH"></div>
-        <div class="row tight"><label>Flip V</label><input type="checkbox" id="topFlipV"></div>
-      </div>
-      <div class="row"><small>الموضع ثابت: (right=10px, top=10px) — لا يمكن سحبه أو تغييره.</small></div>
     </details>
 
     <details open>
@@ -109,6 +103,23 @@
         <label class="chip"><input type="checkbox" id="showQuotes" checked> الفواصل أعلى النص</label>
         <label class="chip"><input type="checkbox" id="showLine" checked> خط سفلي</label>
         <label class="chip"><input type="checkbox" id="showBadge"> شارة</label>
+      </div>
+      <div class="row">
+        <label>شكل الفاصلة</label>
+        <select id="quoteStyle">
+          <option value="“ ”" selected>عادي “ ”</option>
+          <option value="« »">فرنسي « »</option>
+          <option value="‹ ›">فرنسي مفرد ‹ ›</option>
+          <option value="„ “">ألماني „ “</option>
+          <option value="” “">معكوس ” “</option>
+          <option value="「 」">ياباني 「 」</option>
+          <option value="『 』">ياباني مزدوج 『 』</option>
+          <option value="〝 〟">ياباني معكوس 〝 〟</option>
+          <option value="none">بدون</option>
+        </select>
+      </div>
+      <div class="grid2">
+        <div class="row tight"><label>لون الفاصلة</label><input type="color" id="quoteColor" value="#CBA552"></div>
       </div>
       <div class="grid2">
         <div class="row tight"><label>لون القصاصات</label><input type="color" id="accentColor" value="#CBA552"></div>
@@ -150,8 +161,8 @@
         <div class="row tight"><label>Flip V</label><input type="checkbox" id="overlayFlipV"></div>
       </div>
       <div class="grid2">
-        <div class="row tight"><label>السطوع</label><input type="range" id="overlayBright" min="0" max="2" step="0.01" value="1"></div>
-        <div class="row tight"><label>التباين</label><input type="range" id="overlayContrast" min="0" max="2" step="0.01" value="1"></div>
+        <div class="row tight"><label>السطوع</label><input type="range" id="overlayBright" min="0" max="3" step="0.01" value="1"></div>
+        <div class="row tight"><label>التباين</label><input type="range" id="overlayContrast" min="0" max="3" step="0.01" value="1"></div>
       </div>
       <div class="row tight"><label>التشبّع</label><input type="range" id="overlaySaturate" min="0" max="2" step="0.01" value="1"></div>
       <div class="row"><small>تقدر تسحب الصورة مباشرة على اللوحة.</small></div>
@@ -162,8 +173,23 @@
       <div class="row">
         <button id="btnReset" class="ghost">إعادة ضبط</button>
         <button id="btnExport">تصدير PNG</button>
+        <button id="btnPreview" class="ghost" data-bs-toggle="modal" data-bs-target="#previewModal">معاينة</button>
       </div>
       <div class="row"><small>كل شيء محلي في المتصفح.</small></div>
+    </details>
+    <details open>
+        <summary>شركاء ورعاه</summary>
+        <div class="row tight">
+            <label class="chip"><input type="checkbox" id="showPartners"> تفعيل</label>
+        </div>
+        <div class="row">
+            <label>نص الشركاء</label>
+            <input type="text" id="partnersText" placeholder="مثال: شركاؤنا">
+        </div>
+        <div id="partnersContainer"></div>
+        <div class="row">
+            <button id="addPartner" class="ghost">إضافة شريك</button>
+        </div>
     </details>
   </section>
 
@@ -173,7 +199,7 @@
 </main>
 
 
-<footer class="footer fixed-bottom border-0">
+<footer class="footer mt-auto border-0">
   <div class="py-2" style="background:linear-gradient(90deg,#063033,#0b4e50)">
     <div class="container d-flex flex-wrap justify-content-between align-items-center text-light">
       <div class="d-flex align-items-center gap-3">
@@ -194,6 +220,21 @@
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="previewModalLabel">معاينة</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <img id="previewImage" src="" class="img-fluid" alt="Preview">
+      </div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
