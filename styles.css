@@ -22,5 +22,4 @@ input[type=range]{flex:1}
 button{appearance:none;border:none;border-radius:12px;padding:12px 14px;font-weight:900;background:#13a2a7;color:white;cursor:pointer}
 button.ghost{background:transparent;border:1px solid #14787b}
 button:hover{filter:brightness(1.08)}
-footer{padding:12px 22px;color:#9abbae;border-top:1px solid #0b4e50}
 @media(max-width:980px){.layout{grid-template-columns:1fr}.controls{max-height:unset}}

@@ -13,11 +13,20 @@ let state = {
   // Text & decor
   quote:"وقتك رأسُ مالك؛ إن أضعته اليوم أضعتَ غدَك.",
   fontSize:72, lineHeight:1.35, textColor:"#ffffff", textShadow:true, textAlign:"center",
+  textPos: { x: 50, y: 50 }, // X, Y in percentage
+  isDraggingText: false,
+  dragStart: { x: 0, y: 0 },
   showQuotes:true, showLine:true, showBadge:false, accentColor:"#CBA552", accentAlpha:1, sepColor:"#CBA552", sepAlpha:1, sepSize:64, sepYOffset:0,
+  quoteStyle: "“ ”",
+  quoteColor: "#CBA552",
   lineLabel:{text:"", bg:"#063033", color:"#ffffff", radius:18},
 
   // Overlay movable image
-  overlay:{img:null, opacity:1, scale:1, rotation:0, xPerc:50, yPerc:50, visible:true, flipH:false, flipV:false, bright:1, contrast:1, saturate:1}
+  overlay:{img:null, opacity:1, scale:1, rotation:0, xPerc:50, yPerc:50, visible:true, flipH:false, flipV:false, bright:1, contrast:1, saturate:1},
+
+  // Partners
+  showPartners: false,
+  partners: []
 };
 
 function setSize(n){ state.size=n; canvas.width=n; canvas.height=n; draw(); }
@@ -83,38 +92,65 @@ function wrapText(text, maxW){
 function drawDecor(){
   const pad = canvas.width*0.09, color = hexWithAlpha(state.accentColor, state.accentAlpha);
   ctx.save(); ctx.fillStyle=color; ctx.strokeStyle=color;
-  if(state.showLine){ ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(pad, canvas.height*0.85); ctx.lineTo(canvas.width-pad, canvas.height*0.85); ctx.stroke(); }
+  if (state.showLine) {
+    const t = state.lineLabel.text;
+    const lineY = canvas.height * 0.85;
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+
+    if (t) {
+        // If there's text, draw line with a gap for the label
+        ctx.font = `800 ${Math.round(state.fontSize * 0.45)}px Tajawal`;
+        const paddingX = 18;
+        const textW = ctx.measureText(t).width;
+        const boxW = textW + paddingX * 2;
+        const gap = boxW + 20; // A little extra padding
+
+        const startX = pad;
+        const endX = canvas.width - pad;
+        const midX = canvas.width / 2;
+
+        ctx.moveTo(startX, lineY);
+        ctx.lineTo(midX - gap / 2, lineY);
+        ctx.moveTo(midX + gap / 2, lineY);
+        ctx.lineTo(endX, lineY);
+    } else {
+        // If no text, draw a single continuous line
+        ctx.moveTo(pad, lineY);
+        ctx.lineTo(canvas.width - pad, lineY);
+    }
+    ctx.stroke();
+  }
 
   // الفواصل أعلى النص
-  if(state.showQuotes){
+  if(state.showQuotes && state.quoteStyle !== 'none'){
+    const [startQuote, endQuote] = state.quoteStyle.split(' ');
     const size = state.sepSize;
-    ctx.fillStyle = hexWithAlpha(state.sepColor, state.sepAlpha);
+    ctx.fillStyle = hexWithAlpha(state.quoteColor, state.sepAlpha);
     ctx.textAlign="center"; ctx.textBaseline="alphabetic";
     ctx.font=`900 ${size}px Tajawal`;
     const baseY = canvas.height*0.32 + state.sepYOffset;
-    ctx.fillText("“", canvas.width/2, baseY);
-    ctx.fillText("”", canvas.width/2, baseY + size*0.9);
+    ctx.fillText(startQuote, canvas.width/2, baseY);
+    ctx.fillText(endQuote, canvas.width/2, baseY + size*0.9);
   }
 
   if(state.showBadge){ ctx.globalAlpha*=0.92; ctx.beginPath(); ctx.arc(canvas.width*0.12, canvas.height*0.18, canvas.width*0.035, 0, Math.PI*2); ctx.fill(); }
   ctx.restore();
 }
+
 function drawText(){
   const maxW = canvas.width*0.76; ctx.save(); ctx.fillStyle=state.textColor; ctx.textBaseline="top";
   if(state.textShadow){ ctx.shadowColor="rgba(0,0,0,.35)"; ctx.shadowBlur=10; ctx.shadowOffsetY=3; }
-  let x = canvas.width/2; let align="center";
-  if(state.textAlign==="right"){ align="right"; x=canvas.width*0.86; }
-  else if(state.textAlign==="left"){ align="left"; x=canvas.width*0.14; }
-  ctx.textAlign=align; ctx.font=`900 ${state.fontSize}px Tajawal, system-ui`;
+
+  const x = canvas.width * (state.textPos.x / 100);
+  const y = canvas.height * (state.textPos.y / 100);
+
+  ctx.textAlign = state.textAlign;
+  ctx.font=`900 ${state.fontSize}px Tajawal, system-ui`;
   const lines = wrapText(state.quote, maxW); const totalH = lines.length*state.fontSize*state.lineHeight;
-  const startY = (canvas.height - totalH)/2; const lineSpacing = state.fontSize*(state.lineHeight-1);
+  const startY = y - totalH / 2;
+  const lineSpacing = state.fontSize*(state.lineHeight-1);
   lines.forEach((ln,i)=> ctx.fillText(ln, x, startY + i*(state.fontSize+lineSpacing)));
-  if(state.showQuotes){
-    ctx.shadowColor="transparent"; ctx.fillStyle = hexWithAlpha(state.accentColor, state.accentAlpha);
-    ctx.textAlign="center"; ctx.font=`900 ${Math.round(state.fontSize*0.9)}px Tajawal`;
-    const y = startY + lines.length*(state.fontSize+lineSpacing) - lineSpacing*0.3;
-    ctx.fillText("”", canvas.width/2, y+state.fontSize*0.2);
-  }
   ctx.restore();
 }
 function drawLineLabel(){
@@ -131,6 +167,121 @@ function drawLineLabel(){
 }
 function roundRect(ctx,x,y,w,h,r){ r=Math.min(r,w/2,h/2); ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
 function hexWithAlpha(hex, a=1){ let h=hex.replace("#",""); if(h.length===3) h=h.split("").map(c=>c+c).join(""); const r=parseInt(h.slice(0,2),16), g=parseInt(h.slice(2,4),16), b=parseInt(h.slice(4,6),16); return `rgba(${r},${g},${b},${a})`; }
+
+// Partner rendering logic
+function renderPartnersUI() {
+    const container = $("#partnersContainer");
+    container.innerHTML = ""; // Clear existing controls
+    state.partners.forEach((partner, index) => {
+        const partnerEl = document.createElement("div");
+        partnerEl.className = "partner-controls";
+        partnerEl.style.marginTop = "10px";
+        partnerEl.innerHTML = `
+            <div class="row">
+                <label>شعار ${index + 1}</label>
+                <input type="file" accept="image/*" data-partner-id="${partner.id}" class="partner-logo-input">
+            </div>
+            <div class="row">
+                <label>اسم ${index + 1}</label>
+                <input type="text" value="${partner.name}" data-partner-id="${partner.id}" class="partner-name-input" style="flex-grow: 1;">
+            </div>
+            <div class="grid2">
+                <div class="row tight"><label>سطوع</label><input type="range" min="0" max="2" step="0.01" value="${partner.brightness}" data-partner-id="${partner.id}" class="partner-brightness-input"></div>
+                <div class="row tight"><label>تباين</label><input type="range" min="0" max="2" step="0.01" value="${partner.contrast}" data-partner-id="${partner.id}" class="partner-contrast-input"></div>
+            </div>
+             <div class="row tight"><label>حجم</label><input type="range" min="0.1" max="1.5" step="0.05" value="${partner.scale || 0.5}" data-partner-id="${partner.id}" class="partner-scale-input"></div>
+            <div class="row" style="margin-top: 5px;">
+                <button class="ghost remove-partner" data-partner-id="${partner.id}" style="width: 100%;">إزالة الشريك ${index + 1}</button>
+            </div>
+            <hr style="border-color:#0b4e50;opacity:.4;margin-top:15px;">
+        `;
+        container.appendChild(partnerEl);
+    });
+
+    // Add event listeners for the newly created controls
+    document.querySelectorAll(".partner-logo-input").forEach(input => input.addEventListener("change", handlePartnerLogoChange));
+    document.querySelectorAll(".partner-name-input").forEach(input => input.addEventListener("input", handlePartnerNameChange));
+    document.querySelectorAll(".partner-brightness-input").forEach(input => input.addEventListener("input", handlePartnerBrightnessChange));
+    document.querySelectorAll(".partner-contrast-input").forEach(input => input.addEventListener("input", handlePartnerContrastChange));
+    document.querySelectorAll(".partner-scale-input").forEach(input => input.addEventListener("input", handlePartnerScaleChange));
+    document.querySelectorAll(".remove-partner").forEach(button => button.addEventListener("click", handleRemovePartner));
+}
+
+function findPartner(id) {
+    return state.partners.find(p => p.id === Number(id));
+}
+
+function handlePartnerLogoChange(e) {
+    const id = e.target.dataset.partnerId;
+    const partner = findPartner(id);
+    if (!partner) return;
+    const f = e.target.files[0];
+    if (!f) return;
+    const img = new Image();
+    img.onload = () => { partner.img = img; draw(); };
+    img.src = URL.createObjectURL(f);
+}
+
+function handlePartnerNameChange(e) {
+    const partner = findPartner(e.target.dataset.partnerId);
+    if (partner) { partner.name = e.target.value; draw(); }
+}
+
+function handlePartnerBrightnessChange(e) {
+    const partner = findPartner(e.target.dataset.partnerId);
+    if (partner) { partner.brightness = parseFloat(e.target.value); draw(); }
+}
+
+function handlePartnerContrastChange(e) {
+    const partner = findPartner(e.target.dataset.partnerId);
+    if (partner) { partner.contrast = parseFloat(e.target.value); draw(); }
+}
+
+function handlePartnerScaleChange(e) {
+    const partner = findPartner(e.target.dataset.partnerId);
+    if (partner) { partner.scale = parseFloat(e.target.value); draw(); }
+}
+
+function handleRemovePartner(e) {
+    const id = e.target.dataset.partnerId;
+    state.partners = state.partners.filter(p => p.id !== Number(id));
+    renderPartnersUI();
+    draw();
+}
+
+function drawPartners() {
+    if (!state.showPartners || state.partners.length === 0) return;
+
+    const totalPartners = state.partners.length;
+    const padding = canvas.width * 0.1;
+    const totalWidth = canvas.width - (padding * 2);
+    const spacing = totalPartners > 1 ? totalWidth / (totalPartners - 1) : 0;
+    const yPos = canvas.height * 0.9; // Position partners at 90% down the canvas
+
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    state.partners.forEach((partner, index) => {
+        if (!partner.img) return;
+
+        const x = padding + (spacing * index);
+        const logoHeight = canvas.height * 0.05 * (partner.scale || 0.5);
+        const ir = partner.img.width / partner.img.height;
+        const logoWidth = logoHeight * ir;
+
+        ctx.save();
+        ctx.filter = `brightness(${partner.brightness}) contrast(${partner.contrast})`;
+        ctx.drawImage(partner.img, x - logoWidth / 2, yPos, logoWidth, logoHeight);
+        ctx.restore();
+
+        ctx.fillStyle = state.textColor;
+        ctx.font = `bold ${Math.round(state.fontSize * 0.25)}px Tajawal`;
+        ctx.fillText(partner.name, x, yPos + logoHeight + 15);
+    });
+
+    ctx.restore();
+}
 
 function drawTopRightLogo(){
   if(!state.topEnabled || !state.topLogo) return;
@@ -155,12 +306,20 @@ function drawTopRightLogo(){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawGradient();
+
+  ctx.save();
+  roundRect(ctx, 0, 0, canvas.width, canvas.height, 16);
+  ctx.clip();
   drawBackgroundImage();
   drawLogoWatermark();
   drawOverlay();
+  ctx.restore();
+
+  drawDecor();
   drawText();
   drawLineLabel();
   drawTopRightLogo();
+  drawPartners();
 }
 
 function hookUI(){
@@ -197,6 +356,8 @@ function hookUI(){
   $("#textColor").addEventListener("input", e=>{state.textColor=e.target.value; draw();});
   $("#textShadow").addEventListener("change", e=>{state.textShadow=e.target.checked; draw();});
   $("#textAlign").addEventListener("change", e=>{state.textAlign=e.target.value; draw();});
+  $("#quoteStyle").addEventListener("change", e=>{state.quoteStyle=e.target.value; draw();});
+  $("#quoteColor").addEventListener("input", e=>{state.quoteColor=e.target.value; draw();});
   $("#showQuotes").addEventListener("change", e=>{state.showQuotes=e.target.checked; draw();});
   $("#showLine").addEventListener("change", e=>{state.showLine=e.target.checked; draw();});
   $("#showBadge").addEventListener("change", e=>{state.showBadge=e.target.checked; draw();});
@@ -214,6 +375,20 @@ function hookUI(){
   // overlay
   $("#overlayImage").addEventListener("change", e=>{ const f=e.target.files[0]; if(!f) return; const img=new Image(); img.onload=()=>{state.overlay.img=img; draw();}; img.src=URL.createObjectURL(f); });
   $("#overlayOpacity").addEventListener("input", e=>{state.overlay.opacity=parseFloat(e.target.value); draw();});
+  // Partners
+  $("#showPartners").addEventListener("change", e=>{ state.showPartners = e.target.checked; draw(); });
+  $("#addPartner").addEventListener("click", () => {
+      state.partners.push({
+          id: Date.now(),
+          img: null,
+          name: "شريك جديد",
+          brightness: 1,
+          contrast: 1,
+          scale: 0.5
+      });
+      renderPartnersUI();
+      draw();
+  });
   $("#overlayScale").addEventListener("input", e=>{state.overlay.scale=parseFloat(e.target.value); draw();});
   $("#overlayRotation").addEventListener("input", e=>{state.overlay.rotation=parseFloat(e.target.value); draw();});
   $("#overlayVisible").addEventListener("change", e=>{state.overlay.visible=e.target.checked; draw();});
@@ -225,6 +400,45 @@ function hookUI(){
   $("#overlayContrast").addEventListener("input", e=>{state.overlay.contrast=parseFloat(e.target.value); draw();});
   $("#overlaySaturate").addEventListener("input", e=>{state.overlay.saturate=parseFloat(e.target.value); draw();});
 
+  // text dragging listeners
+    canvas.addEventListener("mousedown", e => {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const maxW = canvas.width * 0.76;
+        const lines = wrapText(state.quote, maxW);
+        const totalH = lines.length * state.fontSize * state.lineHeight;
+        const textX = canvas.width * (state.textPos.x / 100);
+        const textY = canvas.height * (state.textPos.y / 100);
+        const startY = textY - totalH / 2;
+
+        // Simple bounding box check
+        if (x > textX - maxW/2 && x < textX + maxW/2 && y > startY && y < startY + totalH) {
+            state.isDraggingText = true;
+            state.dragStart.x = x - textX;
+            state.dragStart.y = y - textY;
+        }
+    });
+
+    canvas.addEventListener("mousemove", e => {
+        if (!state.isDraggingText) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        state.textPos.x = ((x - state.dragStart.x) / canvas.width) * 100;
+        state.textPos.y = ((y - state.dragStart.y) / canvas.height) * 100;
+        draw();
+    });
+
+    canvas.addEventListener("mouseup", () => {
+        state.isDraggingText = false;
+    });
+
+    canvas.addEventListener("mouseout", () => {
+        state.isDraggingText = false;
+    });
+
   // export & reset
   $("#btnExport").addEventListener("click", ()=>{
     const a = document.createElement("a");
@@ -234,22 +448,36 @@ function hookUI(){
   });
   $("#btnReset").addEventListener("click", ()=>{
     state = {
-      size:1080, grad:{c1:"#0f6f73", c2:"#0b4e50", angle:25},
+      size:1080,
+      grad:{c1:"#0f6f73", c2:"#0b4e50", angle:25},
       bgImage:null, bgImageOpacity:0.25, bgFit:"cover", bgBlur:0, bgBright:1, bgContrast:1,
       wmLogo:null, wmEnabled:true, wmOpacity:0.08, wmScale:1.4,
       topLogo:null, topEnabled:true, topScale:0.23, topRotation:0, topOpacity:1, topFlipH:false, topFlipV:false,
-      quote:"وقتك رأسُ مالك؛ إن أضعته اليوم أضعتَ غدَك.", fontSize:72, lineHeight:1.35, textColor:"#ffffff", textShadow:true, textAlign:"center",
-      showQuotes:true, showLine:true, showBadge:false, accentColor:"#CBA552", accentAlpha:1, sepColor:"#CBA552", sepAlpha:1, sepSize:64, sepYOffset:0, lineLabel:{text:"", bg:"#063033", color:"#ffffff", radius:18},
-      overlay:{img:null, opacity:1, scale:1, rotation:0, xPerc:50, yPerc:50, visible:true, flipH:false, flipV:false, bright:1, contrast:1, saturate:1}
+      quote:"وقتك رأسُ مالك؛ إن أضعته اليوم أضعتَ غدَك.",
+      fontSize:72, lineHeight:1.35, textColor:"#ffffff", textShadow:true, textAlign:"center",
+      textPos: { x: 50, y: 50 },
+      isDraggingText: false,
+      dragStart: { x: 0, y: 0 },
+      showQuotes:true, showLine:true, showBadge:false, accentColor:"#CBA552", accentAlpha:1, sepColor:"#CBA552", sepAlpha:1, sepSize:64, sepYOffset:0,
+      quoteStyle: "“ ”",
+      quoteColor: "#CBA552",
+      lineLabel:{text:"", bg:"#063033", color:"#ffffff", radius:18},
+      overlay:{img:null, opacity:1, scale:1, rotation:0, xPerc:50, yPerc:50, visible:true, flipH:false, flipV:false, bright:1, contrast:1, saturate:1},
+      showPartners: false,
+      partners: []
     };
+    // Also reset UI controls
     $('#canvasSize').value='1080'; $('#bg1').value='#0f6f73'; $('#bg2').value='#0b4e50'; $('#gradAngle').value=25;
     $('#bgImage').value=''; $('#bgImageOpacity').value=0.25; $('#bgBlur').value=0; $('#bgFit').value='cover';
     $('#wmLogo').value=''; $('#wmEnabled').checked=true; $('#wmOpacity').value=0.08; $('#wmScale').value=1.4;
     $('#topLogo').value=''; $('#topEnabled').checked=true; $('#topScale').value=0.23; $('#topRotation').value=0; $('#topOpacity').value=1; $('#topFlipH').checked=false; $('#topFlipV').checked=false;
     $('#quote').value=state.quote; $('#fontSize').value=72; $('#lineHeight').value=1.35; $('#textColor').value='#ffffff'; $('#textShadow').checked=true; $('#textAlign').value='center';
+    $('#quoteStyle').value='“ ”'; $('#quoteColor').value='#CBA552';
     $('#showQuotes').checked=true; $('#showLine').checked=true; $('#showBadge').checked=false; $('#accentColor').value='#CBA552'; $('#accentAlpha').value=1;
     $('#lineLabel').value=''; $('#lineLabelBg').value='#063033'; $('#lineLabelColor').value='#ffffff'; $('#lineLabelRadius').value=18;
     $('#overlayImage').value=''; $('#overlayOpacity').value=1; $('#overlayScale').value=1; $('#overlayRotation').value=0; $('#overlayVisible').checked=true; $('#overlayX').value=50; $('#overlayY').value=50; $('#overlayFlipH').checked=false; $('#overlayFlipV').checked=false; $('#overlayBright').value=1; $('#overlayContrast').value=1; $('#overlaySaturate').value=1;
+    $('#showPartners').checked = false;
+    renderPartnersUI();
     setSize(1280);
   });
 }
