@@ -61,6 +61,7 @@ function drawBackgroundImage(){
   ctx.drawImage(img, dx, dy, w, h);
   ctx.filter="none"; ctx.restore();
 }
+
 function drawLogoWatermark(){
   if(!state.wmEnabled || !state.wmLogo) return;
   const img = state.wmLogo;
@@ -448,11 +449,6 @@ function hookUI(){
     renderTopLogosUI();
     draw();
   });
-  $("#topScale").addEventListener("input", e=>{state.topScale=parseFloat(e.target.value); draw();});
-  $("#topRotation").addEventListener("input", e=>{state.topRotation=parseFloat(e.target.value); draw();});
-  $("#topOpacity").addEventListener("input", e=>{state.topOpacity=parseFloat(e.target.value); draw();});
-  $("#topFlipH").addEventListener("change", e=>{state.topFlipH=e.target.checked; draw();});
-  $("#topFlipV").addEventListener("change", e=>{state.topFlipV=e.target.checked; draw();});
 
   // text
   $("#quote").addEventListener("input", e=>{state.quote=e.target.value; draw();});
@@ -558,9 +554,10 @@ function hookUI(){
   });
 
   $("#btnExport").addEventListener("click", ()=>{
+    const format = $("#exportFormat").value;
     const a = document.createElement("a");
-    a.download = "hamidin-quote.png";
-    a.href = canvas.toDataURL("image/png");
+    a.download = `hamidin-quote.${format}`;
+    a.href = canvas.toDataURL(`image/${format}`);
     a.click();
   });
   $("#btnReset").addEventListener("click", ()=>{
@@ -581,13 +578,13 @@ function hookUI(){
       lineLabel:{text:"", bg:"#063033", color:"#ffffff", radius:18},
       overlay:{img:null, opacity:1, scale:1, rotation:0, xPerc:50, yPerc:50, visible:true, flipH:false, flipV:false, bright:1, contrast:1, saturate:1},
       showPartners: false,
-      partners: []
+      partners: [],
+      topLogos: []
     };
     // Also reset UI controls
     $('#canvasSize').value='1080'; $('#bg1').value='#0f6f73'; $('#bg2').value='#0b4e50'; $('#gradAngle').value=25;
     $('#bgImage').value=''; $('#bgImageOpacity').value=0.25; $('#bgBlur').value=0; $('#bgFit').value='cover';
     $('#wmLogo').value=''; $('#wmEnabled').checked=true; $('#wmOpacity').value=0.08; $('#wmScale').value=1.4;
-    $('#topLogo').value=''; $('#topEnabled').checked=true; $('#topScale').value=0.23; $('#topRotation').value=0; $('#topOpacity').value=1; $('#topFlipH').checked=false; $('#topFlipV').checked=false;
     $('#quote').value=state.quote; $('#fontSize').value=72; $('#lineHeight').value=1.35; $('#textColor').value='#ffffff'; $('#textShadow').checked=true; $('#textAlign').value='center';
     $('#quoteStyle').value='“ ”'; $('#quoteColor').value='#CBA552';
     $('#showQuotes').checked=true; $('#showLine').checked=true; $('#showBadge').checked=false; $('#accentColor').value='#CBA552'; $('#accentAlpha').value=1;
