@@ -8,7 +8,7 @@ let state = {
 
   // Logos (v5 baseline with fixed top-right position at 10px)
   wmLogo:null, wmEnabled:true, wmOpacity:0.08, wmScale:1.4,
-  topLogo:null, topEnabled:true, topScale:0.23, topRotation:0, topOpacity:1, topFlipH:false, topFlipV:false,
+  topLogos: [],
 
   // Text & decor
   quote:"وقتك رأسُ مالك؛ إن أضعته اليوم أضعتَ غدَك.",
@@ -26,7 +26,8 @@ let state = {
 
   // Partners
   showPartners: false,
-  partners: []
+  partners: [],
+  partnersText: ""
 };
 
 function setSize(n){ state.size=n; canvas.width=n; canvas.height=n; draw(); }
@@ -127,11 +128,18 @@ function drawDecor(){
     const [startQuote, endQuote] = state.quoteStyle.split(' ');
     const size = state.sepSize;
     ctx.fillStyle = hexWithAlpha(state.quoteColor, state.sepAlpha);
-    ctx.textAlign="center"; ctx.textBaseline="alphabetic";
+    ctx.textAlign="center";
     ctx.font=`900 ${size}px Tajawal`;
-    const baseY = canvas.height*0.32 + state.sepYOffset;
-    ctx.fillText(startQuote, canvas.width/2, baseY);
-    ctx.fillText(endQuote, canvas.width/2, baseY + size*0.9);
+
+    // Draw quote above the text
+    ctx.textBaseline="bottom";
+    const topY = canvas.height * (state.textPos.y / 100) - (wrapText(state.quote, canvas.width * 0.76).length * state.fontSize * state.lineHeight) / 2;
+    ctx.fillText(startQuote, canvas.width/2, topY - 10);
+
+    // Draw quote below the text
+    ctx.textBaseline="top";
+    const bottomY = canvas.height * (state.textPos.y / 100) + (wrapText(state.quote, canvas.width * 0.76).length * state.fontSize * state.lineHeight) / 2;
+    ctx.fillText(endQuote, canvas.width/2, bottomY + 10);
   }
 
   if(state.showBadge){ ctx.globalAlpha*=0.92; ctx.beginPath(); ctx.arc(canvas.width*0.12, canvas.height*0.18, canvas.width*0.035, 0, Math.PI*2); ctx.fill(); }
@@ -249,6 +257,69 @@ function handleRemovePartner(e) {
     draw();
 }
 
+function renderTopLogosUI() {
+    const container = $("#topLogosContainer");
+    container.innerHTML = ""; // Clear existing controls
+    state.topLogos.forEach((logo, index) => {
+        const logoEl = document.createElement("div");
+        logoEl.className = "top-logo-controls";
+        logoEl.style.marginTop = "10px";
+        logoEl.innerHTML = `
+            <div class="row">
+                <label>شعار ${index + 1}</label>
+                <input type="file" accept="image/*" data-logo-id="${logo.id}" class="top-logo-input">
+            </div>
+            <div class="grid2">
+                <div class="row tight"><label>حجم</label><input type="range" min="0.05" max="0.8" step="0.01" value="${logo.scale}" data-logo-id="${logo.id}" class="top-logo-scale-input"></div>
+                <div class="row tight"><label>شفافية</label><input type="range" min="0" max="1" step="0.01" value="${logo.opacity}" data-logo-id="${logo.id}" class="top-logo-opacity-input"></div>
+            </div>
+            <div class="row" style="margin-top: 5px;">
+                <button class="ghost remove-top-logo" data-logo-id="${logo.id}" style="width: 100%;">إزالة الشعار ${index + 1}</button>
+            </div>
+            <hr style="border-color:#0b4e50;opacity:.4;margin-top:15px;">
+        `;
+        container.appendChild(logoEl);
+    });
+
+    // Add event listeners for the newly created controls
+    document.querySelectorAll(".top-logo-input").forEach(input => input.addEventListener("change", handleTopLogoChange));
+    document.querySelectorAll(".top-logo-scale-input").forEach(input => input.addEventListener("input", handleTopLogoScaleChange));
+    document.querySelectorAll(".top-logo-opacity-input").forEach(input => input.addEventListener("input", handleTopLogoOpacityChange));
+    document.querySelectorAll(".remove-top-logo").forEach(button => button.addEventListener("click", handleRemoveTopLogo));
+}
+
+function findTopLogo(id) {
+    return state.topLogos.find(l => l.id === Number(id));
+}
+
+function handleTopLogoChange(e) {
+    const id = e.target.dataset.logoId;
+    const logo = findTopLogo(id);
+    if (!logo) return;
+    const f = e.target.files[0];
+    if (!f) return;
+    const img = new Image();
+    img.onload = () => { logo.img = img; draw(); };
+    img.src = URL.createObjectURL(f);
+}
+
+function handleTopLogoScaleChange(e) {
+    const logo = findTopLogo(e.target.dataset.logoId);
+    if (logo) { logo.scale = parseFloat(e.target.value); draw(); }
+}
+
+function handleTopLogoOpacityChange(e) {
+    const logo = findTopLogo(e.target.dataset.logoId);
+    if (logo) { logo.opacity = parseFloat(e.target.value); draw(); }
+}
+
+function handleRemoveTopLogo(e) {
+    const id = e.target.dataset.logoId;
+    state.topLogos = state.topLogos.filter(l => l.id !== Number(id));
+    renderTopLogosUI();
+    draw();
+}
+
 function drawPartners() {
     if (!state.showPartners || state.partners.length === 0) return;
 
@@ -263,6 +334,18 @@ function drawPartners() {
     ctx.textBaseline = "middle";
 
     state.partners.forEach((partner, index) => {
+        if (index > 0) {
+            const prevX = padding + (spacing * (index - 1));
+            const currentX = padding + (spacing * index);
+            const midX = (prevX + currentX) / 2;
+            ctx.beginPath();
+            ctx.moveTo(midX, yPos - (canvas.height * 0.025));
+            ctx.lineTo(midX, yPos + (canvas.height * 0.025));
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
         if (!partner.img) return;
 
         const x = padding + (spacing * index);
@@ -280,27 +363,41 @@ function drawPartners() {
         ctx.fillText(partner.name, x, yPos + logoHeight + 15);
     });
 
+    if (state.partnersText) {
+        ctx.fillStyle = state.textColor;
+        ctx.font = `bold ${Math.round(state.fontSize * 0.3)}px Tajawal`;
+        ctx.fillText(state.partnersText, canvas.width / 2, yPos + canvas.height * 0.05 + 40);
+    }
+
     ctx.restore();
 }
 
-function drawTopRightLogo(){
-  if(!state.topEnabled || !state.topLogo) return;
-  const img = state.topLogo;
-  const target = canvas.width * state.topScale;
-  const ir = img.width/img.height;
-  let w,h; if(ir>=1){ w=target; h=target/ir; } else { h=target; w=h*ir; }
+function drawTopLogos() {
+    let currentX = 10; // Start from left
+    const offsetY = 10;
 
-  ctx.save();
-  ctx.globalAlpha = state.topOpacity;
+    state.topLogos.forEach(logo => {
+        if (!logo.img) return;
 
-  // ثابت: 10px من الأعلى واليمين
-  const offsetX = 10, offsetY = 10;
-  ctx.translate(canvas.width - offsetX, offsetY);
-  ctx.rotate(deg2rad(state.topRotation));
-  ctx.scale(state.topFlipH?-1:1, state.topFlipV?-1:1);
-  // ثبت الركن العلوي الأيمن
-  ctx.drawImage(img, -w, 0, w, h);
-  ctx.restore();
+        const img = logo.img;
+        const target = canvas.width * logo.scale;
+        const ir = img.width / img.height;
+        let w, h;
+        if (ir >= 1) {
+            w = target;
+            h = target / ir;
+        } else {
+            h = target;
+            w = h * ir;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = logo.opacity;
+        ctx.drawImage(img, currentX, offsetY, w, h);
+        ctx.restore();
+
+        currentX += w + 10; // Add spacing
+    });
 }
 
 function draw(){
@@ -318,7 +415,7 @@ function draw(){
   drawDecor();
   drawText();
   drawLineLabel();
-  drawTopRightLogo();
+  drawTopLogos();
   drawPartners();
 }
 
@@ -340,9 +437,17 @@ function hookUI(){
   $("#wmOpacity").addEventListener("input", e=>{state.wmOpacity=parseFloat(e.target.value); draw();});
   $("#wmScale").addEventListener("input", e=>{state.wmScale=parseFloat(e.target.value); draw();});
 
-  // top-right fixed logo
-  $("#topLogo").addEventListener("change", e=>{ const f=e.target.files[0]; if(!f) return; const img=new Image(); img.onload=()=>{state.topLogo=img; draw();}; img.src=URL.createObjectURL(f); });
-  $("#topEnabled").addEventListener("change", e=>{state.topEnabled=e.target.checked; draw();});
+  // top-logos
+  $("#addTopLogo").addEventListener("click", () => {
+    state.topLogos.push({
+        id: Date.now(),
+        img: null,
+        scale: 0.23,
+        opacity: 1
+    });
+    renderTopLogosUI();
+    draw();
+  });
   $("#topScale").addEventListener("input", e=>{state.topScale=parseFloat(e.target.value); draw();});
   $("#topRotation").addEventListener("input", e=>{state.topRotation=parseFloat(e.target.value); draw();});
   $("#topOpacity").addEventListener("input", e=>{state.topOpacity=parseFloat(e.target.value); draw();});
@@ -377,7 +482,9 @@ function hookUI(){
   $("#overlayOpacity").addEventListener("input", e=>{state.overlay.opacity=parseFloat(e.target.value); draw();});
   // Partners
   $("#showPartners").addEventListener("change", e=>{ state.showPartners = e.target.checked; draw(); });
+  $("#partnersText").addEventListener("input", e=>{ state.partnersText = e.target.value; draw(); });
   $("#addPartner").addEventListener("click", () => {
+    if (state.partners.length < 8) {
       state.partners.push({
           id: Date.now(),
           img: null,
@@ -388,6 +495,7 @@ function hookUI(){
       });
       renderPartnersUI();
       draw();
+    }
   });
   $("#overlayScale").addEventListener("input", e=>{state.overlay.scale=parseFloat(e.target.value); draw();});
   $("#overlayRotation").addEventListener("input", e=>{state.overlay.rotation=parseFloat(e.target.value); draw();});
@@ -403,8 +511,10 @@ function hookUI(){
   // text dragging listeners
     canvas.addEventListener("mousedown", e => {
         const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
 
         const maxW = canvas.width * 0.76;
         const lines = wrapText(state.quote, maxW);
@@ -424,8 +534,10 @@ function hookUI(){
     canvas.addEventListener("mousemove", e => {
         if (!state.isDraggingText) return;
         const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
         state.textPos.x = ((x - state.dragStart.x) / canvas.width) * 100;
         state.textPos.y = ((y - state.dragStart.y) / canvas.height) * 100;
         draw();
@@ -440,6 +552,11 @@ function hookUI(){
     });
 
   // export & reset
+  $("#btnPreview").addEventListener("click", () => {
+      const previewImage = $("#previewImage");
+      previewImage.src = canvas.toDataURL("image/png");
+  });
+
   $("#btnExport").addEventListener("click", ()=>{
     const a = document.createElement("a");
     a.download = "hamidin-quote.png";
@@ -478,6 +595,8 @@ function hookUI(){
     $('#overlayImage').value=''; $('#overlayOpacity').value=1; $('#overlayScale').value=1; $('#overlayRotation').value=0; $('#overlayVisible').checked=true; $('#overlayX').value=50; $('#overlayY').value=50; $('#overlayFlipH').checked=false; $('#overlayFlipV').checked=false; $('#overlayBright').value=1; $('#overlayContrast').value=1; $('#overlaySaturate').value=1;
     $('#showPartners').checked = false;
     renderPartnersUI();
+    state.topLogos = [];
+    renderTopLogosUI();
     setSize(1280);
   });
 }
