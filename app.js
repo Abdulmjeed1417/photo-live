@@ -51,18 +51,6 @@ function drawBackgroundImage(){
   ctx.drawImage(img, dx, dy, w, h);
   ctx.filter="none"; ctx.restore();
 }
-  ctx.globalAlpha = state.bgImageOpacity;
-  const img = state.bgImage, cw=canvas.width, ch=canvas.height;
-  const ir = img.width/img.height, cr=cw/ch;
-  let w,h,dx,dy;
-  if(state.bgFit==="cover"){
-    if(ir>cr){ h=ch; w=h*ir; dx=(cw-w)/2; dy=0; } else { w=cw; h=w/ir; dx=0; dy=(ch-h)/2; }
-  }else{
-    if(ir>cr){ w=cw; h=w/ir; dx=0; dy=(ch-h)/2; } else { h=ch; w=h*ir; dx=(cw-w)/2; dy=0; }
-  }
-  ctx.drawImage(img, dx, dy, w, h);
-  ctx.filter="none"; ctx.restore();
-}
 function drawLogoWatermark(){
   if(!state.wmEnabled || !state.wmLogo) return;
   const img = state.wmLogo;
@@ -108,10 +96,6 @@ function drawDecor(){
     ctx.fillText("”", canvas.width/2, baseY + size*0.9);
   }
 
-  if(state.showBadge){ ctx.globalAlpha*=0.92; ctx.beginPath(); ctx.arc(canvas.width*0.12, canvas.height*0.18, canvas.width*0.035, 0, Math.PI*2); ctx.fill(); }
-  ctx.restore();
-}
-  if(state.showLine){ ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(pad, canvas.height*0.85); ctx.lineTo(canvas.width-pad, canvas.height*0.85); ctx.stroke(); }
   if(state.showBadge){ ctx.globalAlpha*=0.92; ctx.beginPath(); ctx.arc(canvas.width*0.12, canvas.height*0.18, canvas.width*0.035, 0, Math.PI*2); ctx.fill(); }
   ctx.restore();
 }
@@ -255,7 +239,7 @@ function hookUI(){
       wmLogo:null, wmEnabled:true, wmOpacity:0.08, wmScale:1.4,
       topLogo:null, topEnabled:true, topScale:0.23, topRotation:0, topOpacity:1, topFlipH:false, topFlipV:false,
       quote:"وقتك رأسُ مالك؛ إن أضعته اليوم أضعتَ غدَك.", fontSize:72, lineHeight:1.35, textColor:"#ffffff", textShadow:true, textAlign:"center",
-      showQuotes:true, showLine:true, showBadge:false, accentColor:"#CBA552", accentAlpha:1, sepColor:"#CBA552", sepAlpha:1, sepSize:64, sepYOffset:0, lineLabel:{text:\"\", bg:\"#063033\", color:\"#ffffff\", radius:18},
+      showQuotes:true, showLine:true, showBadge:false, accentColor:"#CBA552", accentAlpha:1, sepColor:"#CBA552", sepAlpha:1, sepSize:64, sepYOffset:0, lineLabel:{text:"", bg:"#063033", color:"#ffffff", radius:18},
       overlay:{img:null, opacity:1, scale:1, rotation:0, xPerc:50, yPerc:50, visible:true, flipH:false, flipV:false, bright:1, contrast:1, saturate:1}
     };
     $('#canvasSize').value='1080'; $('#bg1').value='#0f6f73'; $('#bg2').value='#0b4e50'; $('#gradAngle').value=25;
