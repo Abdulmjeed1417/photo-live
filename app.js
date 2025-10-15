@@ -317,6 +317,19 @@ function renderTopLogosUI() {
                 <div class="row tight"><label>حجم</label><input type="range" min="0.05" max="0.8" step="0.01" value="${logo.scale}" data-logo-id="${logo.id}" class="top-logo-scale-input"></div>
                 <div class="row tight"><label>شفافية</label><input type="range" min="0" max="1" step="0.01" value="${logo.opacity}" data-logo-id="${logo.id}" class="top-logo-opacity-input"></div>
             </div>
+            <div class="grid2">
+                <div class="row tight"><label>سطوع</label><input type="range" min="0" max="3" step="0.01" value="${logo.brightness}" data-logo-id="${logo.id}" class="top-logo-brightness-input"></div>
+                <div class="row tight"><label>تباين</label><input type="range" min="0" max="3" step="0.01" value="${logo.contrast}" data-logo-id="${logo.id}" class="top-logo-contrast-input"></div>
+            </div>
+            <div class="row">
+                <label>لون الشعار</label>
+                <select data-logo-id="${logo.id}" class="top-logo-color-input">
+                    <option value="normal" ${logo.logoColor === 'normal' ? 'selected' : ''}>عادي</option>
+                    <option value="gold" ${logo.logoColor === 'gold' ? 'selected' : ''}>ذهبي</option>
+                    <option value="white" ${logo.logoColor === 'white' ? 'selected' : ''}>أبيض</option>
+                    <option value="black" ${logo.logoColor === 'black' ? 'selected' : ''}>أسود</option>
+                </select>
+            </div>
             <div class="row" style="margin-top: 5px;">
                 <button class="ghost remove-top-logo" data-logo-id="${logo.id}" style="width: 100%;">إزالة الشعار ${index + 1}</button>
             </div>
@@ -329,7 +342,25 @@ function renderTopLogosUI() {
     document.querySelectorAll(".top-logo-input").forEach(input => input.addEventListener("change", handleTopLogoChange));
     document.querySelectorAll(".top-logo-scale-input").forEach(input => input.addEventListener("input", handleTopLogoScaleChange));
     document.querySelectorAll(".top-logo-opacity-input").forEach(input => input.addEventListener("input", handleTopLogoOpacityChange));
+    document.querySelectorAll(".top-logo-brightness-input").forEach(input => input.addEventListener("input", handleTopLogoBrightnessChange));
+    document.querySelectorAll(".top-logo-contrast-input").forEach(input => input.addEventListener("input", handleTopLogoContrastChange));
+    document.querySelectorAll(".top-logo-color-input").forEach(input => input.addEventListener("change", handleTopLogoColorChange));
     document.querySelectorAll(".remove-top-logo").forEach(button => button.addEventListener("click", handleRemoveTopLogo));
+}
+
+function handleTopLogoBrightnessChange(e) {
+    const logo = findTopLogo(e.target.dataset.logoId);
+    if (logo) { logo.brightness = parseFloat(e.target.value); draw(); }
+}
+
+function handleTopLogoContrastChange(e) {
+    const logo = findTopLogo(e.target.dataset.logoId);
+    if (logo) { logo.contrast = parseFloat(e.target.value); draw(); }
+}
+
+function handleTopLogoColorChange(e) {
+    const logo = findTopLogo(e.target.dataset.logoId);
+    if (logo) { logo.logoColor = e.target.value; draw(); }
 }
 
 function findTopLogo(id) {
@@ -375,6 +406,13 @@ function drawPartners() {
 
     ctx.save();
     ctx.textAlign = "center";
+
+    if (state.partnersText) {
+        ctx.fillStyle = state.textColor;
+        ctx.font = `bold ${Math.round(state.fontSize * 0.3)}px Tajawal`;
+        ctx.textBaseline = "top";
+        ctx.fillText(state.partnersText, canvas.width / 2, yPos - 40);
+    }
 
     state.partners.forEach((partner, index) => {
         const x = padding + (spacing * index);
@@ -458,13 +496,6 @@ function drawPartners() {
         ctx.textAlign = "center";
     });
 
-    if (state.partnersText) {
-        ctx.fillStyle = state.textColor;
-        ctx.font = `bold ${Math.round(state.fontSize * 0.3)}px Tajawal`;
-        ctx.textBaseline = "top";
-        ctx.fillText(state.partnersText, canvas.width / 2, yPos + 80);
-    }
-
     ctx.restore();
 }
 
@@ -487,9 +518,23 @@ function drawTopLogos() {
         const x = canvas.width * (logo.x / 100) - w / 2;
         const y = canvas.height * (logo.y / 100) - h / 2;
 
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCanvas.width = w;
+        tempCanvas.height = h;
+
+        tempCtx.drawImage(img, 0, 0, w, h);
+
+        if (logo.logoColor !== 'normal') {
+            tempCtx.globalCompositeOperation = 'source-in';
+            tempCtx.fillStyle = logo.logoColor === 'gold' ? '#FFD700' : logo.logoColor;
+            tempCtx.fillRect(0, 0, w, h);
+        }
+
         ctx.save();
         ctx.globalAlpha = logo.opacity;
-        ctx.drawImage(img, x, y, w, h);
+        ctx.filter = `brightness(${logo.brightness}) contrast(${logo.contrast})`;
+        ctx.drawImage(tempCanvas, x, y, w, h);
         ctx.restore();
     });
 }
@@ -539,7 +584,10 @@ function hookUI(){
         scale: 0.23,
         opacity: 1,
         x: 50, // Initial X position in percentage
-        y: 5   // Initial Y position in percentage
+        y: 5,   // Initial Y position in percentage
+        brightness: 1,
+        contrast: 1,
+        logoColor: "normal"
     });
     renderTopLogosUI();
     draw();
