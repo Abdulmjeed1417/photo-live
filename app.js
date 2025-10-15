@@ -15,6 +15,8 @@ let state = {
   fontSize:72, lineHeight:1.35, textColor:"#ffffff", textShadow:true, textAlign:"center",
   textPos: { x: 50, y: 50 }, // X, Y in percentage
   isDraggingText: false,
+  isDraggingTopLogo: false,
+  draggedLogoId: null,
   dragStart: { x: 0, y: 0 },
   showQuotes:true, showLine:true, showBadge:false, accentColor:"#CBA552", accentAlpha:1, sepColor:"#CBA552", sepAlpha:1, sepSize:64, sepYOffset:0,
   quoteStyle: "“ ”",
@@ -27,7 +29,8 @@ let state = {
   // Partners
   showPartners: false,
   partners: [],
-  partnersText: ""
+  partnersText: "",
+  partnersYOffset: 0
 };
 
 function setSize(n){ state.size=n; canvas.width=n; canvas.height=n; draw(); }
@@ -194,6 +197,28 @@ function renderPartnersUI() {
                 <label>اسم ${index + 1}</label>
                 <input type="text" value="${partner.name}" data-partner-id="${partner.id}" class="partner-name-input" style="flex-grow: 1;">
             </div>
+            <div class="row tight">
+                <label>حجم الخط</label>
+                <input type="range" min="12" max="48" value="${partner.textSize || 24}" data-partner-id="${partner.id}" class="partner-text-size-input">
+            </div>
+            <div class="row">
+                <label>موضع النص</label>
+                <select data-partner-id="${partner.id}" class="partner-text-position-input">
+                    <option value="bottom" ${partner.textPosition === 'bottom' ? 'selected' : ''}>أسفل</option>
+                    <option value="top" ${partner.textPosition === 'top' ? 'selected' : ''}>أعلى</option>
+                    <option value="left" ${partner.textPosition === 'left' ? 'selected' : ''}>يسار</option>
+                    <option value="right" ${partner.textPosition === 'right' ? 'selected' : ''}>يمين</option>
+                </select>
+            </div>
+            <div class="row">
+                <label>لون الشعار</label>
+                <select data-partner-id="${partner.id}" class="partner-logo-color-input">
+                    <option value="normal" ${partner.logoColor === 'normal' ? 'selected' : ''}>عادي</option>
+                    <option value="gold" ${partner.logoColor === 'gold' ? 'selected' : ''}>ذهبي</option>
+                    <option value="white" ${partner.logoColor === 'white' ? 'selected' : ''}>أبيض</option>
+                    <option value="black" ${partner.logoColor === 'black' ? 'selected' : ''}>أسود</option>
+                </select>
+            </div>
             <div class="grid2">
                 <div class="row tight"><label>سطوع</label><input type="range" min="0" max="2" step="0.01" value="${partner.brightness}" data-partner-id="${partner.id}" class="partner-brightness-input"></div>
                 <div class="row tight"><label>تباين</label><input type="range" min="0" max="2" step="0.01" value="${partner.contrast}" data-partner-id="${partner.id}" class="partner-contrast-input"></div>
@@ -213,7 +238,25 @@ function renderPartnersUI() {
     document.querySelectorAll(".partner-brightness-input").forEach(input => input.addEventListener("input", handlePartnerBrightnessChange));
     document.querySelectorAll(".partner-contrast-input").forEach(input => input.addEventListener("input", handlePartnerContrastChange));
     document.querySelectorAll(".partner-scale-input").forEach(input => input.addEventListener("input", handlePartnerScaleChange));
+    document.querySelectorAll(".partner-text-size-input").forEach(input => input.addEventListener("input", handlePartnerTextSizeChange));
+    document.querySelectorAll(".partner-text-position-input").forEach(input => input.addEventListener("change", handlePartnerTextPositionChange));
+    document.querySelectorAll(".partner-logo-color-input").forEach(input => input.addEventListener("change", handlePartnerLogoColorChange));
     document.querySelectorAll(".remove-partner").forEach(button => button.addEventListener("click", handleRemovePartner));
+}
+
+function handlePartnerTextSizeChange(e) {
+    const partner = findPartner(e.target.dataset.partnerId);
+    if (partner) { partner.textSize = parseInt(e.target.value); draw(); }
+}
+
+function handlePartnerTextPositionChange(e) {
+    const partner = findPartner(e.target.dataset.partnerId);
+    if (partner) { partner.textPosition = e.target.value; draw(); }
+}
+
+function handlePartnerLogoColorChange(e) {
+    const partner = findPartner(e.target.dataset.partnerId);
+    if (partner) { partner.logoColor = e.target.value; draw(); }
 }
 
 function findPartner(id) {
@@ -327,56 +370,105 @@ function drawPartners() {
     const totalPartners = state.partners.length;
     const padding = canvas.width * 0.1;
     const totalWidth = canvas.width - (padding * 2);
-    const spacing = totalPartners > 1 ? totalWidth / (totalPartners - 1) : 0;
-    const yPos = canvas.height * 0.9; // Position partners at 90% down the canvas
+    const spacing = totalPartners > 1 ? (totalWidth / (totalPartners - 1)) : 0;
+    const yPos = (canvas.height * 0.9) + state.partnersYOffset;
 
     ctx.save();
     ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
 
     state.partners.forEach((partner, index) => {
+        const x = padding + (spacing * index);
+
+        // Draw dividing lines
         if (index > 0) {
             const prevX = padding + (spacing * (index - 1));
-            const currentX = padding + (spacing * index);
-            const midX = (prevX + currentX) / 2;
+            const midX = (prevX + x) / 2;
             ctx.beginPath();
-            ctx.moveTo(midX, yPos - (canvas.height * 0.025));
-            ctx.lineTo(midX, yPos + (canvas.height * 0.025));
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-            ctx.lineWidth = 2;
+            ctx.moveTo(midX, yPos - 20);
+            ctx.lineTo(midX, yPos + 20);
+            ctx.strokeStyle = "rgba(0, 0, 0, 0.2)";
+            ctx.lineWidth = 1;
             ctx.stroke();
         }
 
         if (!partner.img) return;
 
-        const x = padding + (spacing * index);
-        const logoHeight = canvas.height * 0.05 * (partner.scale || 0.5);
+        const logoHeight = canvas.height * 0.04 * (partner.scale || 0.5);
         const ir = partner.img.width / partner.img.height;
         const logoWidth = logoHeight * ir;
 
+        let logoX = x - logoWidth / 2;
+        let logoY = yPos - logoHeight / 2;
+        let textX = x;
+        let textY;
+
+        ctx.font = `bold ${partner.textSize || 24}px Tajawal`;
+        const textMetrics = ctx.measureText(partner.name);
+        const textWidth = textMetrics.width;
+
+        switch (partner.textPosition) {
+            case 'top':
+                textY = yPos - logoHeight / 2 - 5;
+                logoY = yPos + 5;
+                ctx.textBaseline = "bottom";
+                break;
+            case 'left':
+                logoX = x + textWidth / 2 + 5;
+                textX = x - logoWidth / 2 - 5;
+                ctx.textAlign = "right";
+                ctx.textBaseline = "middle";
+                break;
+            case 'right':
+                logoX = x - textWidth / 2 - 5;
+                textX = x + logoWidth / 2 + 5;
+                ctx.textAlign = "left";
+                ctx.textBaseline = "middle";
+                break;
+            case 'bottom':
+            default:
+                textY = yPos + logoHeight / 2 + 5;
+                logoY = yPos - 5;
+                ctx.textBaseline = "top";
+                break;
+        }
+
+        // Draw Logo with colorization
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCanvas.width = logoWidth;
+        tempCanvas.height = logoHeight;
+
+        tempCtx.drawImage(partner.img, 0, 0, logoWidth, logoHeight);
+
+        if (partner.logoColor !== 'normal') {
+            tempCtx.globalCompositeOperation = 'source-in';
+            tempCtx.fillStyle = partner.logoColor === 'gold' ? '#FFD700' : partner.logoColor;
+            tempCtx.fillRect(0, 0, logoWidth, logoHeight);
+        }
+
         ctx.save();
         ctx.filter = `brightness(${partner.brightness}) contrast(${partner.contrast})`;
-        ctx.drawImage(partner.img, x - logoWidth / 2, yPos, logoWidth, logoHeight);
+        ctx.drawImage(tempCanvas, logoX, logoY, logoWidth, logoHeight);
         ctx.restore();
 
+        // Draw Text
         ctx.fillStyle = state.textColor;
-        ctx.font = `bold ${Math.round(state.fontSize * 0.25)}px Tajawal`;
-        ctx.fillText(partner.name, x, yPos + logoHeight + 15);
+        ctx.fillText(partner.name, textX, textY);
+        // Reset alignment for next partner
+        ctx.textAlign = "center";
     });
 
     if (state.partnersText) {
         ctx.fillStyle = state.textColor;
         ctx.font = `bold ${Math.round(state.fontSize * 0.3)}px Tajawal`;
-        ctx.fillText(state.partnersText, canvas.width / 2, yPos + canvas.height * 0.05 + 40);
+        ctx.textBaseline = "top";
+        ctx.fillText(state.partnersText, canvas.width / 2, yPos + 80);
     }
 
     ctx.restore();
 }
 
 function drawTopLogos() {
-    let currentX = 10; // Start from left
-    const offsetY = 10;
-
     state.topLogos.forEach(logo => {
         if (!logo.img) return;
 
@@ -392,12 +484,13 @@ function drawTopLogos() {
             w = h * ir;
         }
 
+        const x = canvas.width * (logo.x / 100) - w / 2;
+        const y = canvas.height * (logo.y / 100) - h / 2;
+
         ctx.save();
         ctx.globalAlpha = logo.opacity;
-        ctx.drawImage(img, currentX, offsetY, w, h);
+        ctx.drawImage(img, x, y, w, h);
         ctx.restore();
-
-        currentX += w + 10; // Add spacing
     });
 }
 
@@ -444,7 +537,9 @@ function hookUI(){
         id: Date.now(),
         img: null,
         scale: 0.23,
-        opacity: 1
+        opacity: 1,
+        x: 50, // Initial X position in percentage
+        y: 5   // Initial Y position in percentage
     });
     renderTopLogosUI();
     draw();
@@ -479,6 +574,7 @@ function hookUI(){
   // Partners
   $("#showPartners").addEventListener("change", e=>{ state.showPartners = e.target.checked; draw(); });
   $("#partnersText").addEventListener("input", e=>{ state.partnersText = e.target.value; draw(); });
+  $("#partnersYOffset").addEventListener("input", e=>{ state.partnersYOffset = parseInt(e.target.value); draw(); });
   $("#addPartner").addEventListener("click", () => {
     if (state.partners.length < 8) {
       state.partners.push({
@@ -487,7 +583,10 @@ function hookUI(){
           name: "شريك جديد",
           brightness: 1,
           contrast: 1,
-          scale: 0.5
+          scale: 0.5,
+          textPosition: "bottom",
+          logoColor: "normal",
+          textSize: 24
       });
       renderPartnersUI();
       draw();
@@ -512,6 +611,25 @@ function hookUI(){
         const x = (e.clientX - rect.left) * scaleX;
         const y = (e.clientY - rect.top) * scaleY;
 
+        // Check if dragging a top logo
+        for (const logo of state.topLogos.slice().reverse()) {
+            if (!logo.img) continue;
+            const target = canvas.width * logo.scale;
+            const ir = logo.img.width / logo.img.height;
+            let w, h;
+            if (ir >= 1) { w = target; h = target / ir; } else { h = target; w = h * ir; }
+            const logoX = canvas.width * (logo.x / 100) - w / 2;
+            const logoY = canvas.height * (logo.y / 100) - h / 2;
+
+            if (x > logoX && x < logoX + w && y > logoY && y < logoY + h) {
+                state.isDraggingTopLogo = true;
+                state.draggedLogoId = logo.id;
+                state.dragStart.x = x - (canvas.width * (logo.x / 100));
+                state.dragStart.y = y - (canvas.height * (logo.y / 100));
+                return;
+            }
+        }
+
         const maxW = canvas.width * 0.76;
         const lines = wrapText(state.quote, maxW);
         const totalH = lines.length * state.fontSize * state.lineHeight;
@@ -528,6 +646,20 @@ function hookUI(){
     });
 
     canvas.addEventListener("mousemove", e => {
+        if (state.isDraggingTopLogo) {
+            const logo = findTopLogo(state.draggedLogoId);
+            if (!logo) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            logo.x = ((x - state.dragStart.x) / canvas.width) * 100;
+            logo.y = ((y - state.dragStart.y) / canvas.height) * 100;
+            draw();
+            return;
+        }
+
         if (!state.isDraggingText) return;
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
@@ -541,10 +673,14 @@ function hookUI(){
 
     canvas.addEventListener("mouseup", () => {
         state.isDraggingText = false;
+        state.isDraggingTopLogo = false;
+        state.draggedLogoId = null;
     });
 
     canvas.addEventListener("mouseout", () => {
         state.isDraggingText = false;
+        state.isDraggingTopLogo = false;
+        state.draggedLogoId = null;
     });
 
   // export & reset
@@ -566,11 +702,13 @@ function hookUI(){
       grad:{c1:"#0f6f73", c2:"#0b4e50", angle:25},
       bgImage:null, bgImageOpacity:0.25, bgFit:"cover", bgBlur:0, bgBright:1, bgContrast:1,
       wmLogo:null, wmEnabled:true, wmOpacity:0.08, wmScale:1.4,
-      topLogo:null, topEnabled:true, topScale:0.23, topRotation:0, topOpacity:1, topFlipH:false, topFlipV:false,
+      topLogos: [],
       quote:"وقتك رأسُ مالك؛ إن أضعته اليوم أضعتَ غدَك.",
       fontSize:72, lineHeight:1.35, textColor:"#ffffff", textShadow:true, textAlign:"center",
       textPos: { x: 50, y: 50 },
       isDraggingText: false,
+      isDraggingTopLogo: false,
+      draggedLogoId: null,
       dragStart: { x: 0, y: 0 },
       showQuotes:true, showLine:true, showBadge:false, accentColor:"#CBA552", accentAlpha:1, sepColor:"#CBA552", sepAlpha:1, sepSize:64, sepYOffset:0,
       quoteStyle: "“ ”",
@@ -579,7 +717,8 @@ function hookUI(){
       overlay:{img:null, opacity:1, scale:1, rotation:0, xPerc:50, yPerc:50, visible:true, flipH:false, flipV:false, bright:1, contrast:1, saturate:1},
       showPartners: false,
       partners: [],
-      topLogos: []
+      partnersText: "",
+      partnersYOffset: 0
     };
     // Also reset UI controls
     $('#canvasSize').value='1080'; $('#bg1').value='#0f6f73'; $('#bg2').value='#0b4e50'; $('#gradAngle').value=25;
