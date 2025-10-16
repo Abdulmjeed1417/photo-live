@@ -7,7 +7,7 @@ let state = {
   bgImage:null, bgImageOpacity:0.25, bgFit:"cover", bgBlur:0, bgBright:1, bgContrast:1,
 
   // Logos (v5 baseline with fixed top-right position at 10px)
-  wmLogo:null, wmEnabled:true, wmOpacity:0.08, wmScale:1.4,
+  wmLogo:null, wmEnabled:true, wmOpacity:0.08, wmScale:1.4, wmX: 50, wmY: 50,
   topLogos: [],
 
   // Text & decor
@@ -15,8 +15,6 @@ let state = {
   fontSize:72, lineHeight:1.35, textColor:"#ffffff", textShadow:true, textAlign:"center",
   textPos: { x: 50, y: 50 }, // X, Y in percentage
   isDraggingText: false,
-  isDraggingTopLogo: false,
-  draggedLogoId: null,
   dragStart: { x: 0, y: 0 },
   showQuotes:true, showLine:true, showBadge:false, accentColor:"#CBA552", accentAlpha:1, sepColor:"#CBA552", sepAlpha:1, sepSize:64, sepYOffset:0,
   quoteStyle: "“ ”",
@@ -71,7 +69,8 @@ function drawLogoWatermark(){
   const target = Math.min(canvas.width, canvas.height)*state.wmScale;
   const ir = img.width/img.height;
   let w,h; if(ir>=1){ w=target; h=target/ir; } else { h=target; w=h*ir; }
-  const x = canvas.width/2 - w/2, y = canvas.height/2 - h/2;
+  const x = canvas.width * (state.wmX / 100) - w / 2;
+  const y = canvas.height * (state.wmY / 100) - h / 2;
   ctx.save(); ctx.globalAlpha = state.wmOpacity; ctx.drawImage(img, x, y, w, h); ctx.restore();
 }
 function drawOverlay(){
@@ -137,12 +136,12 @@ function drawDecor(){
 
     // Draw quote above the text
     ctx.textBaseline="bottom";
-    const topY = canvas.height * (state.textPos.y / 100) - (wrapText(state.quote, canvas.width * 0.76).length * state.fontSize * state.lineHeight) / 2;
+    const topY = canvas.height * (state.textPos.y / 100) - (wrapText(state.quote, canvas.width * 0.76).length * state.fontSize * state.lineHeight) / 2 + state.sepYOffset;
     ctx.fillText(startQuote, canvas.width/2, topY - 10);
 
     // Draw quote below the text
     ctx.textBaseline="top";
-    const bottomY = canvas.height * (state.textPos.y / 100) + (wrapText(state.quote, canvas.width * 0.76).length * state.fontSize * state.lineHeight) / 2;
+    const bottomY = canvas.height * (state.textPos.y / 100) + (wrapText(state.quote, canvas.width * 0.76).length * state.fontSize * state.lineHeight) / 2 + state.sepYOffset;
     ctx.fillText(endQuote, canvas.width/2, bottomY + 10);
   }
 
@@ -314,6 +313,7 @@ function renderTopLogosUI() {
                 <input type="file" accept="image/*" data-logo-id="${logo.id}" class="top-logo-input">
             </div>
             <div class="grid2">
+            <div class="grid2">
                 <div class="row tight"><label>حجم</label><input type="range" min="0.05" max="0.8" step="0.01" value="${logo.scale}" data-logo-id="${logo.id}" class="top-logo-scale-input"></div>
                 <div class="row tight"><label>شفافية</label><input type="range" min="0" max="1" step="0.01" value="${logo.opacity}" data-logo-id="${logo.id}" class="top-logo-opacity-input"></div>
             </div>
@@ -398,12 +398,6 @@ function handleRemoveTopLogo(e) {
 function drawPartners() {
     if (!state.showPartners || state.partners.length === 0) return;
 
-    const totalPartners = state.partners.length;
-    const padding = canvas.width * 0.1;
-    const totalWidth = canvas.width - (padding * 2);
-    const spacing = totalPartners > 1 ? (totalWidth / (totalPartners - 1)) : 0;
-    const yPos = (canvas.height * 0.9) + state.partnersYOffset;
-
     ctx.save();
     ctx.textAlign = "center";
 
@@ -411,32 +405,21 @@ function drawPartners() {
         ctx.fillStyle = state.textColor;
         ctx.font = `bold ${Math.round(state.fontSize * 0.3)}px Tajawal`;
         ctx.textBaseline = "top";
-        ctx.fillText(state.partnersText, canvas.width / 2, yPos - 40);
+        ctx.fillText(state.partnersText, canvas.width / 2, (canvas.height * 0.9) + state.partnersYOffset - 40);
     }
 
     state.partners.forEach((partner, index) => {
-        const x = padding + (spacing * index);
-
-        // Draw dividing lines
-        if (index > 0) {
-            const prevX = padding + (spacing * (index - 1));
-            const midX = (prevX + x) / 2;
-            ctx.beginPath();
-            ctx.moveTo(midX, yPos - 20);
-            ctx.lineTo(midX, yPos + 20);
-            ctx.strokeStyle = "rgba(0, 0, 0, 0.2)";
-            ctx.lineWidth = 1;
-            ctx.stroke();
-        }
-
         if (!partner.img) return;
 
         const logoHeight = canvas.height * 0.04 * (partner.scale || 0.5);
         const ir = partner.img.width / partner.img.height;
         const logoWidth = logoHeight * ir;
 
+        const x = canvas.width * (partner.x / 100);
+        const y = canvas.height * (partner.y / 100);
+
         let logoX = x - logoWidth / 2;
-        let logoY = yPos - logoHeight / 2;
+        let logoY = y - logoHeight / 2;
         let textX = x;
         let textY;
 
@@ -446,8 +429,8 @@ function drawPartners() {
 
         switch (partner.textPosition) {
             case 'top':
-                textY = yPos - logoHeight / 2 - 5;
-                logoY = yPos + 5;
+                textY = y - logoHeight / 2 - 5;
+                logoY = y + 5;
                 ctx.textBaseline = "bottom";
                 break;
             case 'left':
@@ -464,8 +447,8 @@ function drawPartners() {
                 break;
             case 'bottom':
             default:
-                textY = yPos + logoHeight / 2 + 5;
-                logoY = yPos - 5;
+                textY = y + logoHeight / 2 + 5;
+                logoY = y - 5;
                 ctx.textBaseline = "top";
                 break;
         }
@@ -623,6 +606,7 @@ function hookUI(){
   $("#showPartners").addEventListener("change", e=>{ state.showPartners = e.target.checked; draw(); });
   $("#partnersText").addEventListener("input", e=>{ state.partnersText = e.target.value; draw(); });
   $("#partnersYOffset").addEventListener("input", e=>{ state.partnersYOffset = parseInt(e.target.value); draw(); });
+
   $("#addPartner").addEventListener("click", () => {
     if (state.partners.length < 8) {
       state.partners.push({
@@ -634,7 +618,9 @@ function hookUI(){
           scale: 0.5,
           textPosition: "bottom",
           logoColor: "normal",
-          textSize: 24
+          textSize: 24,
+          x: 50,
+          y: 90
       });
       renderPartnersUI();
       draw();
@@ -659,7 +645,10 @@ function hookUI(){
         const x = (e.clientX - rect.left) * scaleX;
         const y = (e.clientY - rect.top) * scaleY;
 
-        // Check if dragging a top logo
+        // Check for dragging any draggable element
+        let draggedItem = null;
+
+        // Check top logos
         for (const logo of state.topLogos.slice().reverse()) {
             if (!logo.img) continue;
             const target = canvas.width * logo.scale;
@@ -670,65 +659,84 @@ function hookUI(){
             const logoY = canvas.height * (logo.y / 100) - h / 2;
 
             if (x > logoX && x < logoX + w && y > logoY && y < logoY + h) {
-                state.isDraggingTopLogo = true;
-                state.draggedLogoId = logo.id;
-                state.dragStart.x = x - (canvas.width * (logo.x / 100));
-                state.dragStart.y = y - (canvas.height * (logo.y / 100));
-                return;
+                draggedItem = { type: 'topLogo', item: logo };
+                break;
             }
         }
 
-        const maxW = canvas.width * 0.76;
-        const lines = wrapText(state.quote, maxW);
-        const totalH = lines.length * state.fontSize * state.lineHeight;
-        const textX = canvas.width * (state.textPos.x / 100);
-        const textY = canvas.height * (state.textPos.y / 100);
-        const startY = textY - totalH / 2;
+        // Check partners
+        if (!draggedItem) {
+            for (const partner of state.partners.slice().reverse()) {
+                if (!partner.img) continue;
+                const logoHeight = canvas.height * 0.04 * (partner.scale || 0.5);
+                const ir = partner.img.width / partner.img.height;
+                const w = logoHeight * ir;
+                const h = logoHeight;
+                const partnerX = canvas.width * (partner.x / 100) - w / 2;
+                const partnerY = canvas.height * (partner.y / 100) - h / 2;
 
-        // Simple bounding box check
-        if (x > textX - maxW/2 && x < textX + maxW/2 && y > startY && y < startY + totalH) {
-            state.isDraggingText = true;
-            state.dragStart.x = x - textX;
-            state.dragStart.y = y - textY;
+                if (x > partnerX && x < partnerX + w && y > partnerY && y < partnerY + h) {
+                    draggedItem = { type: 'partner', item: partner };
+                    break;
+                }
+            }
+        }
+
+        // Check watermark
+        if (!draggedItem && state.wmEnabled && state.wmLogo) {
+            const target = Math.min(canvas.width, canvas.height) * state.wmScale;
+            const ir = state.wmLogo.width / state.wmLogo.height;
+            let w, h;
+            if (ir >= 1) { w = target; h = target / ir; } else { h = target; w = h * ir; }
+            const wmX = canvas.width * (state.wmX / 100) - w/2;
+            const wmY = canvas.height * (state.wmY / 100) - h/2;
+
+            if (x > wmX && x < wmX + w && y > wmY && y < wmY + h) {
+                draggedItem = { type: 'watermark', item: state };
+            }
+        }
+
+        // Check main text
+        if (!draggedItem) {
+            const maxW = canvas.width * 0.76;
+            const lines = wrapText(state.quote, maxW);
+            const totalH = lines.length * state.fontSize * state.lineHeight;
+            const textX = canvas.width * (state.textPos.x / 100);
+            const textY = canvas.height * (state.textPos.y / 100);
+            const startY = textY - totalH / 2;
+            if (x > textX - maxW/2 && x < textX + maxW/2 && y > startY && y < startY + totalH) {
+                draggedItem = { type: 'text', item: state.textPos };
+            }
+        }
+
+        if (draggedItem) {
+            state.draggedItem = draggedItem;
+            state.dragStart.x = x - (canvas.width * (draggedItem.item.x / 100));
+            state.dragStart.y = y - (canvas.height * (draggedItem.item.y / 100));
         }
     });
 
     canvas.addEventListener("mousemove", e => {
-        if (state.isDraggingTopLogo) {
-            const logo = findTopLogo(state.draggedLogoId);
-            if (!logo) return;
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const x = (e.clientX - rect.left) * scaleX;
-            const y = (e.clientY - rect.top) * scaleY;
-            logo.x = ((x - state.dragStart.x) / canvas.width) * 100;
-            logo.y = ((y - state.dragStart.y) / canvas.height) * 100;
-            draw();
-            return;
-        }
+        if (!state.draggedItem) return;
 
-        if (!state.isDraggingText) return;
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
         const x = (e.clientX - rect.left) * scaleX;
         const y = (e.clientY - rect.top) * scaleY;
-        state.textPos.x = ((x - state.dragStart.x) / canvas.width) * 100;
-        state.textPos.y = ((y - state.dragStart.y) / canvas.height) * 100;
+
+        state.draggedItem.item.x = ((x - state.dragStart.x) / canvas.width) * 100;
+        state.draggedItem.item.y = ((y - state.dragStart.y) / canvas.height) * 100;
+
         draw();
     });
 
     canvas.addEventListener("mouseup", () => {
-        state.isDraggingText = false;
-        state.isDraggingTopLogo = false;
-        state.draggedLogoId = null;
+        state.draggedItem = null;
     });
 
     canvas.addEventListener("mouseout", () => {
-        state.isDraggingText = false;
-        state.isDraggingTopLogo = false;
-        state.draggedLogoId = null;
+        state.draggedItem = null;
     });
 
   // export & reset
@@ -754,9 +762,7 @@ function hookUI(){
       quote:"وقتك رأسُ مالك؛ إن أضعته اليوم أضعتَ غدَك.",
       fontSize:72, lineHeight:1.35, textColor:"#ffffff", textShadow:true, textAlign:"center",
       textPos: { x: 50, y: 50 },
-      isDraggingText: false,
-      isDraggingTopLogo: false,
-      draggedLogoId: null,
+  draggedItem: null,
       dragStart: { x: 0, y: 0 },
       showQuotes:true, showLine:true, showBadge:false, accentColor:"#CBA552", accentAlpha:1, sepColor:"#CBA552", sepAlpha:1, sepSize:64, sepYOffset:0,
       quoteStyle: "“ ”",
