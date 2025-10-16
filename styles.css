@@ -6,7 +6,7 @@ header h1 small{font-size:13px;font-weight:800;color:#a7d0cf;margin-inline-start
 header .sub{color:#bcd9d9;margin-top:6px;font-size:13px}
 
 .offcanvas {
-    background-color: #f8f9fa;
+    background: linear-gradient(180deg, #ffffff 0%, #007bff 100%);
     color: #333;
 }
 
