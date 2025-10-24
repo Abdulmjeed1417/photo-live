@@ -7,7 +7,7 @@ header .sub{color:#bcd9d9;margin-top:6px;font-size:13px}
 .layout{display:grid;grid-template-columns:minmax(320px,440px) 1fr;gap:18px;padding:18px}
 .controls{max-height:calc(100vh - 120px);overflow:auto}
 .stage{display:flex;align-items:center;justify-content:center}
-canvas{background:#0b4e50;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);}
+canvas{background:#0b4e50;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);max-width:100%;height:auto;}
 details{background:#0a3f41;border:1px solid #0b4e50;border-radius:12px;margin-bottom:12px}
 details>summary{cursor:pointer;padding:12px 14px;font-weight:900}
 details[open]>summary{border-bottom:1px solid #0b4e50}
