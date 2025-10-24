@@ -22,12 +22,15 @@ let state = {
   lineLabel:{text:"", bg:"#063033", color:"#ffffff", radius:18},
 
   // Overlay movable image
-  overlay:{img:null, opacity:1, scale:1, rotation:0, xPerc:50, yPerc:50, visible:true, flipH:false, flipV:false, bright:1, contrast:1, saturate:1},
+  overlay:{img:null, opacity:1, scale:1, rotation:0, xPerc:50, yPerc:50, visible:true, flipH:false, flipV:false, bright:1, contrast:1, saturate:1, isDragging: false},
 
   // Partners
   showPartners: false,
   partners: [],
-  partnersText: ""
+  partnersText: "شركاؤنا",
+  partnersTextPos: { x: 50, y: 95 },
+  partnersTextScale: 0.3,
+  isDraggingPartnersText: false,
 };
 
 function setSize(n){ state.size=n; canvas.width=n; canvas.height=n; draw(); }
@@ -327,7 +330,7 @@ function drawPartners() {
     const padding = canvas.width * 0.1;
     const totalWidth = canvas.width - (padding * 2);
     const spacing = totalPartners > 1 ? totalWidth / (totalPartners - 1) : 0;
-    const yPos = canvas.height * 0.9; // Position partners at 90% down the canvas
+    const yPos = canvas.height * 0.9;
 
     ctx.save();
     ctx.textAlign = "center";
@@ -364,20 +367,34 @@ function drawPartners() {
     });
 
     if (state.partnersText) {
+        const textX = canvas.width * (state.partnersTextPos.x / 100);
+        const textY = canvas.height * (state.partnersTextPos.y / 100);
         ctx.fillStyle = state.textColor;
-        ctx.font = `bold ${Math.round(state.fontSize * 0.3)}px Tajawal`;
-        ctx.fillText(state.partnersText, canvas.width / 2, yPos + canvas.height * 0.05 + 40);
+        ctx.font = `bold ${Math.round(state.fontSize * state.partnersTextScale)}px Tajawal`;
+        ctx.fillText(state.partnersText, textX, textY);
     }
 
     ctx.restore();
 }
 
 function drawTopLogos() {
-    let currentX = 10; // Start from left
-    const offsetY = 10;
-
-    state.topLogos.forEach(logo => {
+    const sortedLogos = [...state.topLogos].sort((a, b) => a.x - b.x);
+    sortedLogos.forEach((logo, index) => {
         if (!logo.img) return;
+
+        if (index > 0) {
+            const prevLogo = sortedLogos[index - 1];
+            const prevLogoWidth = (canvas.width * prevLogo.scale) * (prevLogo.img.width / prevLogo.img.height);
+            const separatorX = (canvas.width * (prevLogo.x / 100)) + (prevLogoWidth / 2) + 5;
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(separatorX, (canvas.height * (logo.y / 100)) - 15);
+            ctx.lineTo(separatorX, (canvas.height * (logo.y / 100)) + 15);
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.restore();
+        }
 
         const img = logo.img;
         const target = canvas.width * logo.scale;
@@ -393,10 +410,8 @@ function drawTopLogos() {
 
         ctx.save();
         ctx.globalAlpha = logo.opacity;
-        ctx.drawImage(img, currentX, offsetY, w, h);
+        ctx.drawImage(img, canvas.width * (logo.x / 100) - w / 2, canvas.height * (logo.y / 100) - h / 2, w, h);
         ctx.restore();
-
-        currentX += w + 10; // Add spacing
     });
 }
 
@@ -443,16 +458,14 @@ function hookUI(){
         id: Date.now(),
         img: null,
         scale: 0.23,
-        opacity: 1
+        opacity: 1,
+        x: 10 + (state.topLogos.length * 20),
+        y: 5,
+        isDragging: false,
     });
     renderTopLogosUI();
     draw();
   });
-  $("#topScale").addEventListener("input", e=>{state.topScale=parseFloat(e.target.value); draw();});
-  $("#topRotation").addEventListener("input", e=>{state.topRotation=parseFloat(e.target.value); draw();});
-  $("#topOpacity").addEventListener("input", e=>{state.topOpacity=parseFloat(e.target.value); draw();});
-  $("#topFlipH").addEventListener("change", e=>{state.topFlipH=e.target.checked; draw();});
-  $("#topFlipV").addEventListener("change", e=>{state.topFlipV=e.target.checked; draw();});
 
   // text
   $("#quote").addEventListener("input", e=>{state.quote=e.target.value; draw();});
@@ -483,6 +496,7 @@ function hookUI(){
   // Partners
   $("#showPartners").addEventListener("change", e=>{ state.showPartners = e.target.checked; draw(); });
   $("#partnersText").addEventListener("input", e=>{ state.partnersText = e.target.value; draw(); });
+  $("#partnersTextScale").addEventListener("input", e=>{ state.partnersTextScale = parseFloat(e.target.value); draw(); });
   $("#addPartner").addEventListener("click", () => {
     if (state.partners.length < 8) {
       state.partners.push({
@@ -523,32 +537,97 @@ function hookUI(){
         const textY = canvas.height * (state.textPos.y / 100);
         const startY = textY - totalH / 2;
 
-        // Simple bounding box check
-        if (x > textX - maxW/2 && x < textX + maxW/2 && y > startY && y < startY + totalH) {
+        if (x > textX - maxW / 2 && x < textX + maxW / 2 && y > startY && y < startY + totalH) {
             state.isDraggingText = true;
             state.dragStart.x = x - textX;
             state.dragStart.y = y - textY;
+            return;
+        }
+
+        const partnersTextX = canvas.width * (state.partnersTextPos.x / 100);
+        const partnersTextY = canvas.height * (state.partnersTextPos.y / 100);
+        const partnersTextWidth = ctx.measureText(state.partnersText).width;
+        if (x > partnersTextX - partnersTextWidth / 2 && x < partnersTextX + partnersTextWidth / 2 && y > partnersTextY - 20 && y < partnersTextY + 20) {
+            state.isDraggingPartnersText = true;
+            state.dragStart.x = x - partnersTextX;
+            state.dragStart.y = y - partnersTextY;
+            return;
+        }
+
+        state.topLogos.forEach(logo => {
+            if (logo.img) {
+                const logoX = canvas.width * (logo.x / 100);
+                const logoY = canvas.height * (logo.y / 100);
+                const logoWidth = (canvas.width * logo.scale) * (logo.img.width / logo.img.height);
+                const logoHeight = canvas.width * logo.scale;
+                if (x > logoX - logoWidth / 2 && x < logoX + logoWidth / 2 && y > logoY - logoHeight / 2 && y < logoY + logoHeight / 2) {
+                    logo.isDragging = true;
+                    state.dragStart.x = x - logoX;
+                    state.dragStart.y = y - logoY;
+                }
+            }
+        });
+
+        if (state.overlay.img && state.overlay.visible) {
+            const overlayX = canvas.width * (state.overlay.xPerc / 100);
+            const overlayY = canvas.height * (state.overlay.yPerc / 100);
+            const overlayWidth = (canvas.width * 0.5 * state.overlay.scale) * (state.overlay.img.width / state.overlay.img.height);
+            const overlayHeight = canvas.width * 0.5 * state.overlay.scale;
+            if (x > overlayX - overlayWidth / 2 && x < overlayX + overlayWidth / 2 && y > overlayY - overlayHeight / 2 && y < overlayY + overlayHeight / 2) {
+                state.overlay.isDragging = true;
+                state.dragStart.x = x - overlayX;
+                state.dragStart.y = y - overlayY;
+            }
         }
     });
 
     canvas.addEventListener("mousemove", e => {
-        if (!state.isDraggingText) return;
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
         const x = (e.clientX - rect.left) * scaleX;
         const y = (e.clientY - rect.top) * scaleY;
-        state.textPos.x = ((x - state.dragStart.x) / canvas.width) * 100;
-        state.textPos.y = ((y - state.dragStart.y) / canvas.height) * 100;
-        draw();
+
+        if (state.isDraggingText) {
+            state.textPos.x = ((x - state.dragStart.x) / canvas.width) * 100;
+            state.textPos.y = ((y - state.dragStart.y) / canvas.height) * 100;
+            draw();
+            return;
+        }
+
+        if (state.isDraggingPartnersText) {
+            state.partnersTextPos.x = ((x - state.dragStart.x) / canvas.width) * 100;
+            state.partnersTextPos.y = ((y - state.dragStart.y) / canvas.height) * 100;
+            draw();
+            return;
+        }
+
+        const draggingLogo = state.topLogos.find(logo => logo.isDragging);
+        if (draggingLogo) {
+            draggingLogo.x = ((x - state.dragStart.x) / canvas.width) * 100;
+            draggingLogo.y = ((y - state.dragStart.y) / canvas.height) * 100;
+            draw();
+        }
+
+        if (state.overlay.isDragging) {
+            state.overlay.xPerc = ((x - state.dragStart.x) / canvas.width) * 100;
+            state.overlay.yPerc = ((y - state.dragStart.y) / canvas.height) * 100;
+            draw();
+        }
     });
 
     canvas.addEventListener("mouseup", () => {
         state.isDraggingText = false;
+        state.isDraggingPartnersText = false;
+        state.topLogos.forEach(logo => logo.isDragging = false);
+        state.overlay.isDragging = false;
     });
 
     canvas.addEventListener("mouseout", () => {
         state.isDraggingText = false;
+        state.isDraggingPartnersText = false;
+        state.topLogos.forEach(logo => logo.isDragging = false);
+        state.overlay.isDragging = false;
     });
 
   // export & reset
