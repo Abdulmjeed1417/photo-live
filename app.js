@@ -180,6 +180,7 @@ function roundRect(ctx,x,y,w,h,r){ r=Math.min(r,w/2,h/2); ctx.beginPath(); ctx.m
 function hexWithAlpha(hex, a=1){ let h=hex.replace("#",""); if(h.length===3) h=h.split("").map(c=>c+c).join(""); const r=parseInt(h.slice(0,2),16), g=parseInt(h.slice(2,4),16), b=parseInt(h.slice(4,6),16); return `rgba(${r},${g},${b},${a})`; }
 
 // Partner rendering logic
+// Renders individual UI controls for each partner, including scale, brightness, etc.
 function renderPartnersUI() {
     const container = $("#partnersContainer");
     container.innerHTML = ""; // Clear existing controls
@@ -260,6 +261,7 @@ function handleRemovePartner(e) {
     draw();
 }
 
+// Renders individual UI controls for each top logo, including scale and opacity.
 function renderTopLogosUI() {
     const container = $("#topLogosContainer");
     container.innerHTML = ""; // Clear existing controls
@@ -324,46 +326,32 @@ function handleRemoveTopLogo(e) {
 }
 
 function drawPartners() {
-    if (!state.showPartners || state.partners.length === 0) return;
-
-    const totalPartners = state.partners.length;
-    const padding = canvas.width * 0.1;
-    const totalWidth = canvas.width - (padding * 2);
-    const spacing = totalPartners > 1 ? totalWidth / (totalPartners - 1) : 0;
-    const yPos = canvas.height * 0.9;
+    if (!state.showPartners) return;
 
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    state.partners.forEach((partner, index) => {
-        if (index > 0) {
-            const prevX = padding + (spacing * (index - 1));
-            const currentX = padding + (spacing * index);
-            const midX = (prevX + currentX) / 2;
-            ctx.beginPath();
-            ctx.moveTo(midX, yPos - (canvas.height * 0.025));
-            ctx.lineTo(midX, yPos + (canvas.height * 0.025));
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-            ctx.lineWidth = 2;
-            ctx.stroke();
-        }
-
+    state.partners.forEach(partner => {
         if (!partner.img) return;
 
-        const x = padding + (spacing * index);
-        const logoHeight = canvas.height * 0.05 * (partner.scale || 0.5);
-        const ir = partner.img.width / partner.img.height;
-        const logoWidth = logoHeight * ir;
+        const img = partner.img;
+        const targetHeight = canvas.height * 0.05 * partner.scale;
+        const ir = img.width / img.height;
+        const h = targetHeight;
+        const w = targetHeight * ir;
+
+        const x = canvas.width * (partner.x / 100);
+        const y = canvas.height * (partner.y / 100);
 
         ctx.save();
         ctx.filter = `brightness(${partner.brightness}) contrast(${partner.contrast})`;
-        ctx.drawImage(partner.img, x - logoWidth / 2, yPos, logoWidth, logoHeight);
+        ctx.drawImage(img, x - w / 2, y - h / 2, w, h);
         ctx.restore();
 
         ctx.fillStyle = state.textColor;
         ctx.font = `bold ${Math.round(state.fontSize * 0.25)}px Tajawal`;
-        ctx.fillText(partner.name, x, yPos + logoHeight + 15);
+        ctx.fillText(partner.name, x, y + h / 2 + 15);
     });
 
     if (state.partnersText) {
@@ -435,6 +423,8 @@ function draw(){
 }
 
 function hookUI(){
+  renderTopLogosUI();
+  renderPartnersUI();
   $("#canvasSize").addEventListener("change", e=> setSize(parseInt(e.target.value)));
   $("#bg1").addEventListener("input", e=>{state.grad.c1=e.target.value; draw();});
   $("#bg2").addEventListener("input", e=>{state.grad.c2=e.target.value; draw();});
@@ -505,7 +495,10 @@ function hookUI(){
           name: "شريك جديد",
           brightness: 1,
           contrast: 1,
-          scale: 0.5
+          scale: 0.5,
+          x: 50,
+          y: 90,
+          isDragging: false,
       });
       renderPartnersUI();
       draw();
@@ -568,6 +561,21 @@ function hookUI(){
             }
         });
 
+        state.partners.forEach(partner => {
+            if (partner.img) {
+                const partnerX = canvas.width * (partner.x / 100);
+                const partnerY = canvas.height * (partner.y / 100);
+                const partnerHeight = canvas.height * 0.05 * partner.scale;
+                const partnerWidth = partnerHeight * (partner.img.width / partner.img.height);
+
+                if (x > partnerX - partnerWidth / 2 && x < partnerX + partnerWidth / 2 && y > partnerY - partnerHeight / 2 && y < partnerY + partnerHeight / 2) {
+                    partner.isDragging = true;
+                    state.dragStart.x = x - partnerX;
+                    state.dragStart.y = y - partnerY;
+                }
+            }
+        });
+
         if (state.overlay.img && state.overlay.visible) {
             const overlayX = canvas.width * (state.overlay.xPerc / 100);
             const overlayY = canvas.height * (state.overlay.yPerc / 100);
@@ -609,6 +617,13 @@ function hookUI(){
             draw();
         }
 
+        const draggingPartner = state.partners.find(p => p.isDragging);
+        if (draggingPartner) {
+            draggingPartner.x = ((x - state.dragStart.x) / canvas.width) * 100;
+            draggingPartner.y = ((y - state.dragStart.y) / canvas.height) * 100;
+            draw();
+        }
+
         if (state.overlay.isDragging) {
             state.overlay.xPerc = ((x - state.dragStart.x) / canvas.width) * 100;
             state.overlay.yPerc = ((y - state.dragStart.y) / canvas.height) * 100;
@@ -620,6 +635,7 @@ function hookUI(){
         state.isDraggingText = false;
         state.isDraggingPartnersText = false;
         state.topLogos.forEach(logo => logo.isDragging = false);
+        state.partners.forEach(p => p.isDragging = false);
         state.overlay.isDragging = false;
     });
 
@@ -627,16 +643,19 @@ function hookUI(){
         state.isDraggingText = false;
         state.isDraggingPartnersText = false;
         state.topLogos.forEach(logo => logo.isDragging = false);
+        state.partners.forEach(p => p.isDragging = false);
         state.overlay.isDragging = false;
     });
 
   // export & reset
   $("#btnPreview").addEventListener("click", () => {
+      draw(); // Ensure canvas is up-to-date before showing
       const previewImage = $("#previewImage");
       previewImage.src = canvas.toDataURL("image/png");
   });
 
   $("#btnExport").addEventListener("click", ()=>{
+    draw(); // Ensure canvas is up-to-date before exporting
     const a = document.createElement("a");
     a.download = "hamidin-quote.png";
     a.href = canvas.toDataURL("image/png");
@@ -679,4 +698,5 @@ function hookUI(){
     setSize(1280);
   });
 }
-hookUI(); setSize(1280); draw();
+hookUI();
+setSize(1280); // This will also trigger the initial draw
