@@ -28,6 +28,7 @@ let state = {
   showPartners: false,
   partners: [],
   partnersText: "شركاؤنا",
+  partnersTextColor: "#ffffff",
   partnersTextPos: { x: 50, y: 95 },
   partnersTextScale: 0.3,
   isDraggingPartnersText: false,
@@ -357,7 +358,7 @@ function drawPartners() {
     if (state.partnersText) {
         const textX = canvas.width * (state.partnersTextPos.x / 100);
         const textY = canvas.height * (state.partnersTextPos.y / 100);
-        ctx.fillStyle = state.textColor;
+        ctx.fillStyle = state.partnersTextColor;
         ctx.font = `bold ${Math.round(state.fontSize * state.partnersTextScale)}px Tajawal`;
         ctx.fillText(state.partnersText, textX, textY);
     }
@@ -486,6 +487,7 @@ function hookUI(){
   // Partners
   $("#showPartners").addEventListener("change", e=>{ state.showPartners = e.target.checked; draw(); });
   $("#partnersText").addEventListener("input", e=>{ state.partnersText = e.target.value; draw(); });
+  $("#partnersTextColor").addEventListener("input", e=>{ state.partnersTextColor = e.target.value; draw(); });
   $("#partnersTextScale").addEventListener("input", e=>{ state.partnersTextScale = parseFloat(e.target.value); draw(); });
   $("#addPartner").addEventListener("click", () => {
     if (state.partners.length < 8) {
